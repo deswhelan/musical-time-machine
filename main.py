@@ -1,4 +1,5 @@
 from bs4 import BeautifulSoup
+from ytmusicapi import YTMusic
 import datetime
 import requests
 
@@ -53,9 +54,41 @@ def create_chartlist(response):
 chart_date = get_chart_date()
 chartlist = get_chartlist(chart_date)
 
+# for entry in chartlist:
+#     print(f"#{entry["chart_position"]}) {entry["title"]}\n{entry["artist"]}\n\n############\n\n")
+
+# TODO: Create Youtube playlist comprising scraped chart
+# TODO: Implement auth for YTMusic and/or use Youtube Music API directly (potential privacy concerns)
+youtube = YTMusic("browser.json")
+# https://github.com/sigma67/ytmusicapi
+# https://ytmusicapi.readthedocs.io/en/latest/
+
+playlist_name = f"{chart_date} Irish singles chart"
+playlist_id = None
+playlists = youtube.get_library_playlists()
+
+for playlist in playlists:
+    if playlist["title"] == playlist_name:
+        playlist_id = playlist["playlistId"]
+        break
+
+if playlist_id:
+    print("Playlist already exists")
+    exit()
+
+playlist_id = youtube.create_playlist(
+    playlist_name,
+    f"Irish singles chart from {chart_date}",
+    privacy_status="PRIVATE"
+)
+
+print(f"Playlist {playlist_id} created")
+
 for entry in chartlist:
-    print(f"#{entry["chart_position"]}) {entry["title"]}\n{entry["artist"]}\n\n############\n\n")
-
-# TODO: Create Spotify playlist comprising 100 scraped singles
-
-
+    try:
+        search_results = youtube.search(entry["title"])
+        youtube.add_playlist_items(playlist_id, [search_results[0]["videoId"]])
+        print(f"'{entry["title"]}' by {entry["artist"]} added to playlist")
+    except Exception as e:
+        print(f"'{entry["title"]}' by {entry["artist"]} not added due to error:\n{e}\n")
+        continue
